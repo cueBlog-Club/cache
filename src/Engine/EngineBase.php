@@ -107,7 +107,7 @@ abstract class EngineBase implements EngineInterface
             if (!is_string($value) || strlen($value)) {
                 throw new InvalidArgumentException(' Cache Value must be non-empty string ');
             }
-            $results[$key] = $this->get($key, $default); // TODO ?? try to mget
+            $results[$key] = $this->get($key, $default); 
         }
         return $results;
     }

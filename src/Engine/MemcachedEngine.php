@@ -8,7 +8,7 @@ use CuePhp\Cache\Exception\InvalidArgumentException;
 use Memcached;
 use CuePhp\Cache\Config\MemcacheEngineConfig;
 
-final class MemcacheEngine extends EngineBase
+final class MemcachedEngine extends EngineBase
 {
     /**
      * memcached engine instance

@@ -14,11 +14,32 @@ final class FileEngineConfig extends EngineConfig
      * file path
      * @var string
      */
-    public $_path;
+    private $_path;
 
     /**
      * file ops
      * @var int
      */
-    public $_mask = 0664;
+    private $_mask = 0664;
+
+    public function __construct( string $path )
+    {
+        $this->_path = $path;
+    }
+
+    public function setMask( int $mask )
+    {
+        $this->_mask = $mask;
+        return  $this;
+    }
+
+    public function getPath(): string
+    {
+        return $this->_path;
+    }
+
+    public function getMask(): int
+    {
+        return $this->_mask;
+    }
 }
