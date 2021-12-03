@@ -39,7 +39,7 @@ final class YacEngine extends EngineBase
             throw new RuntimeException(`extension yac must be loaded`);
         }
         // return parent::init( $config );
-        $this->_client = new \Yac($this->config->prefix);
+        $this->_client = new \Yac($this->config->getPrefix());
         return true;
     }
 

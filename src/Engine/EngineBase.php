@@ -17,6 +17,7 @@ abstract class EngineBase implements EngineInterface
 
     protected function __construct()
     {
+        $this->init();
     }
 
     /**
