@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace CuePhp\Cache;
@@ -9,21 +10,36 @@ use CuePhp\Cache\Engine\EngineInterface;
 
 final class Cache
 {
+    /**
+     * @var EngineInterface
+     */
+    protected $engine = null;
 
-    public static function addEngine(string $name, EngineInterface $engine)
+    /**
+     * @var EngineInterface
+     */
+    public function __construct(EngineInterface $engine)
     {
-        $manager = CacheManager::getInstance();
+        $this->engine = $engine;
     }
 
-    protected static function _createEngine()
+    /**
+     * @var string $key
+     * @var mixed $values
+     * @var int $ttl
+     */
+    public function write(string $key, $values, $ttl = 0)
     {
+        return $this->engine->set($key, $values, $ttl);
     }
 
-    public static function write()
+    public function read(string $key)
     {
+        return $this->engine->get($key);
     }
 
-    public static function read()
+    public function exist(string $key)
     {
+        return $this->engine->has($key);
     }
 }

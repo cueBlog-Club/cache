@@ -44,7 +44,8 @@ class InMemoryEngine extends EngineBase
     /**
      * @var string $key
      * @var mixed $default
-     * @return @nixed
+     * @return @mixed
+     * @throws InvalidArgumentException
      */
     public function get($key, $default = null)
     {

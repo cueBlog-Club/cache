@@ -14,7 +14,7 @@ final class FileEngineConfig extends EngineConfig
      * file path
      * @var string
      */
-    private $_path;
+    private $_path = "/tmp/";
 
     /**
      * file ops

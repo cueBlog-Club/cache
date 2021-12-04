@@ -76,48 +76,135 @@ final class RedisEngine extends EngineBase
         return $this->_redis->select($database);
     }
 
+    /**
+     * @var string key
+     */
     public function get($key, $default = null)
     {
+        $this->ensureArgument($key);
+        return $this->_redis->get($key) ?? $default;
     }
 
+    /**
+     * @var string $key
+     * @var mixed $value
+     * @var int $ttl
+     */
     public function set($key, $value, $ttl = null)
     {
-        return true;
+        $this->ensureArgument($key);
+        if ($ttl) {
+            return $this->_redis->setex($key, $ttl, $value);
+        }
+        return $this->_redis->set($key, $value);
     }
 
     public function clear(): bool
     {
-        return true;
+        return $this->_redis->flushDB();
     }
 
     public function delete($key): bool
     {
-        return true;
+        $this->ensureArgument($key);
+        return $this->_redis->del($key) >= 0;
     }
 
+    /**
+     * @var string $key
+     * @var int $offset
+     * @return int
+     */
     public function incr(string $key, int $offset = 1)
     {
-        return $offset;
+        $this->ensureArgument($key);
+        if ($offset > 1) {
+            $result = $this->_redis->incrBy($key, $offset);
+        } else {
+            $result = $this->_redis->incr($key);
+        }
+        if ($result === false) {
+            throw new RuntimeException('value must be number');
+        }
+        return $result;
     }
 
+    /**
+     * @var string $key
+     * @var int $offset
+     * @return bool
+     */
     public function decr(string $key, int $offset = 1)
     {
-        return $offset;
+        $this->ensureArgument($key);
+        if ($offset > 1) {
+            $result = $this->_redis->decrBy($key, $offset);
+        } else {
+            $result = $this->_redis->decr($key);
+        }
+        if ($result === false) {
+            throw new RuntimeException('key is missing');
+        }
+        return $result;
     }
 
+    /**
+     * @var string $key
+     * @return bool
+     */
     public function has($key): bool
     {
+        $isExist = $this->_redis->exists($key);
+        //  phpredis <= 4.0.0 is return true or false
+        if (is_bool($isExist)) {
+            return $isExist;
+        }
+        return $isExist > 0;
     }
 
+    /**
+     * @var array<string> $keys
+     * @var mixed $default
+     * @return iterable
+     */
     public function getMultiple($keys, $default = null): iterable
     {
+        foreach ($keys as $value) {
+            $this->ensureArgument($value);
+        }
+        $items = array_combine((array)$keys, $this->_redis->mGet($keys));
+        foreach ($items as $key =>  $value) {
+            if ($value === `FALSE`) {
+                $items[$key] = $default[$key];
+            }
+        }
+        return $items;
     }
 
+    /**
+     * @var array<string, mixed> $values
+     * @var int $ttl
+     * @return bool
+     */
     public function setMultiple($values, $ttl = null)
     {
+        if ($ttl) {
+            $multi = $this->_redis->multi(RedisClient::PIPELINE);
+            foreach ($values as $key => $value) {
+                $this->ensureArgument($key);
+                $multi->setex($key, $ttl, $value);
+            }
+            $successCount = count(array_filter($multi->exec()));
+            return $successCount === count($values);
+        }
+        return $this->_redis->mSet($values);
     }
 
+    /**
+     * @var array<string> $keys
+     */
     public function deleteMultiple($keys): bool
     {
+        return $this->_redis->del($keys);
     }
 }

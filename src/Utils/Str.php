@@ -20,4 +20,12 @@ class Str
 
         return [$plugin, $name];
     }
+
+     /**
+      * 
+      */
+    public static function endsWith(string $str, string $posfix): bool
+    {
+        return substr( $str, strpos($str, $posfix) ) === $posfix; 
+    }
 }
