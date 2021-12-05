@@ -21,7 +21,7 @@ class EngineConfig
      * @var int $ttl
      * @return $this
      */
-    public function setTTL( int $ttl )
+    public function setTTL(int $ttl)
     {
         $this->ttl = $ttl;
         return $this;
@@ -31,7 +31,7 @@ class EngineConfig
      * @var string $prefix
      * @return $this
      */
-    public function setPrefix( string $prefix )
+    public function setPrefix(string $prefix)
     {
         $this->prefix = $prefix;
         return $this;

@@ -8,9 +8,15 @@ use CuePhp\Cache\Exception\RuntimeException;
 use CuePhp\Cache\Exception\InvalidArgumentException;
 use Memcached as MemcachedClient;
 use CuePhp\Cache\Config\MemcacheEngineConfig;
+use CuePhp\Cache\Counter;
+use CuePhp\Cache\Traits\CacheTrait;
+use CuePhp\Cache\Traits\CounterTrait;
+use Psr\Cache\CacheItemInterface;
 
-final class MemcachedEngine extends EngineBase
+final class MemcachedEngine extends EngineBase implements CounterInterface
 {
+    use CounterTrait;
+    use CacheTrait;
     /**
      * memcached engine instance
      * @var MemcachedClient
@@ -54,10 +60,14 @@ final class MemcachedEngine extends EngineBase
         $this->_memcached->addServer($this->config->getHost(), $this->config->getPort(), $this->config->getWeight());
     }
 
-    public function get($key, $default = null)
+    /**
+     * @var string $key
+     * @return CacheItemInterface
+     */
+    public function get($key, $default = null): CacheItemInterface
     {
         $this->ensureArgument($key);
-        return $this->_memcached->get($key);
+        return $this->transferToCache($key, $this->_memcached->get($this->getCacheKey($key)));
     }
 
     /**
@@ -84,36 +94,6 @@ final class MemcachedEngine extends EngineBase
     {
         $this->ensureArgument($key);
         return $this->_memcached->delete($key) || $this->_memcached->getResultCode() === MemcachedClient::RES_NOTFOUND;
-    }
-
-    /**
-     * @var string $key
-     * @var int $offset
-     * @return int
-     */
-    public function incr(string $key, int $offset = 1)
-    {
-        $this->ensureArgument($key);
-        $result = $this->_memcached->increment($key, $offset);
-        if ($result === false) {
-            throw new RuntimeException('value must be number');
-        }
-        return $result;
-    }
-
-    /**
-     * @var string $key
-     * @var int $offset
-     * @return int
-     */
-    public function decr(string $key, int $offset = 1)
-    {
-        $this->ensureArgument($key);
-        $result = $this->_memcached->decrement($key, $offset);
-        if ($result === false) {
-            throw new RuntimeException('key is missing');
-        }
-        return $this->get($key);
     }
 
     /**
@@ -170,5 +150,43 @@ final class MemcachedEngine extends EngineBase
             $this->ensureArgument($value);
         }
         return $this->_memcached->deleteMulti($keys) || $this->_memcached->getResultCode() === MemcachedClient::RES_NOTFOUND;
+    }
+
+    /**
+     * @return MemcachedClient
+     */
+    public function getEngine(): MemcachedClient
+    {
+        return $this->_memcached;
+    }
+
+       /**
+     * @var string $key
+     * @var int $offset
+     * @return Counter
+     */
+    public function incr(string $key, int $offset = 1): Counter
+    {
+        $this->ensureArgument($key);
+        $result = $this->_memcached->increment($this->config->getPrefix() . $key, $offset);
+        if ($result === false) {
+            throw new RuntimeException('value must be number');
+        }
+        return $this->transferToCounter($key, $result);
+    }
+
+    /**
+     * @var string $key
+     * @var int $offset
+     * @return Counter
+     */
+    public function decr(string $key, int $offset = 1): Counter
+    {
+        $this->ensureArgument($key);
+        $result = $this->_memcached->decrement($this->config->getPrefix() .$key, $offset);
+        if ($result === false) {
+            throw new RuntimeException('key is missing');
+        }
+        return $this->transferToCounter($key, $result);
     }
 }

@@ -14,7 +14,7 @@ final class MemcacheEngineConfig extends EngineConfig
     /**
      * @var int
      */
-    private  $_port = 11211;
+    private $_port = 11211;
 
     /**
      * @var int
@@ -41,7 +41,7 @@ final class MemcacheEngineConfig extends EngineConfig
         $this->_host = $host;
     }
 
-    public function setPort(string $port)
+    public function setPort(int $port)
     {
         $this->_port = $port;
     }

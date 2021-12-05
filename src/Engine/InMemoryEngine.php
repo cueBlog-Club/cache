@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace CuePhp\Cache\Engine;
 
 use CuePhp\Cache\Config\InMemoryConfig;
+use CuePhp\Cache\Counter;
 use CuePhp\Cache\Engine\EngineBase;
 use CuePhp\Cache\Exception\InvalidArgumentException;
 use CuePhp\Cache\Exception\RuntimeException;
+use CuePhp\Cache\Traits\CounterTrait;
 
-class InMemoryEngine extends EngineBase
+class InMemoryEngine extends EngineBase implements CounterInterface
 {
+    use CounterTrait;
+
     /**
      * @var array<string, array>
      * {
@@ -25,14 +29,17 @@ class InMemoryEngine extends EngineBase
     /**
      * @var InMemoryConfig|null
      */
-    protected $_config = null;
+    protected $config = null;
 
     const DATA_VALUE_KEY_NAME = 'value';
     const DATA_EXPIRE_KEY_NAME = 'expire';
 
-    public function __construct(?InMemoryConfig $_config)
+    public function __construct(InMemoryConfig $config = null)
     {
-        $this->_config = $_config;
+        if( $config === null ) {
+            $config = new InMemoryConfig();
+        }
+        $this->config = $config;
         parent::__construct();
     }
 
@@ -44,16 +51,16 @@ class InMemoryEngine extends EngineBase
     /**
      * @var string $key
      * @var mixed $default
-     * @return @mixed
+     * @return $mixed
      * @throws InvalidArgumentException
      */
     public function get($key, $default = null)
     {
         $this->ensureArgument($key);
-        if (!$this->has($key)) {
-            return $default;
+        if ($this->has($key)) {
+            return $this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME];
         }
-        return $this->_data[$key][self::DATA_VALUE_KEY_NAME];
+        return $default;
     }
 
     /**
@@ -65,9 +72,9 @@ class InMemoryEngine extends EngineBase
     public function set($key, $value, $ttl = null)
     {
         $this->ensureArgument($key);
-        $this->_data[$key] = [
+        $this->_data[$this->getCacheKey($key)] = [
             self::DATA_VALUE_KEY_NAME => $value,
-            self::DATA_EXPIRE_KEY_NAME => $ttl
+            self::DATA_EXPIRE_KEY_NAME => $ttl + time()
         ];
         return true;
     }
@@ -79,7 +86,7 @@ class InMemoryEngine extends EngineBase
     public function delete($key): bool
     {
         $this->ensureArgument($key);
-        unset($this->_data[$key]);
+        unset($this->_data[$this->getCacheKey($key)]);
         return true;
     }
 
@@ -99,10 +106,10 @@ class InMemoryEngine extends EngineBase
     public function has($key): bool
     {
         $this->ensureArgument($key);
-        if (!isset($this->_data[$key])) {
+        if (!isset($this->_data[$this->getCacheKey($key)])) {
             return false;
         }
-        $expire = $this->_data[$key][self::DATA_EXPIRE_KEY_NAME];
+        $expire = $this->_data[$this->getCacheKey($key)][self::DATA_EXPIRE_KEY_NAME];
         if ($expire && $expire < time()) {
             // lazy-delete
             $this->delete($key);
@@ -111,13 +118,39 @@ class InMemoryEngine extends EngineBase
         return true;
     }
 
-    public function incr(string $key, int $offset = 1)
+    /**
+    * @var string $key
+    * @var int $offset
+    * @return Counter
+    */
+    public function incr(string $key, int $offset = 1): Counter
     {
-        throw new RuntimeException(' can not be incr ');
+        $this->ensureArgument($key);
+        if (isset($this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME]) && !is_numeric($this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME])) {
+            throw new RuntimeException('value must be number');
+        } elseif (!isset($this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME])) {
+            $this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME]  = 0;
+        }
+
+        $this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME] += $offset;
+        return $this->transferToCounter($key, $this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME]);
     }
 
-    public function decr(string $key, int $offset = 1)
+    /**
+     * @var string $key
+     * @var int $offset
+     * @return Counter
+     */
+    public function decr(string $key, int $offset = 1): Counter
     {
-        throw new RuntimeException(' can not be decr ');
+        $this->ensureArgument($key);
+        if (isset($this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME]) && !is_numeric($this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME])) {
+            throw new RuntimeException('value must be number');
+        } elseif (!isset($this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME])) {
+            $this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME]  = 0;
+        }
+
+        $this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME] -= $offset;
+        return $this->transferToCounter($key, $this->_data[$this->getCacheKey($key)][self::DATA_VALUE_KEY_NAME]);
     }
 }

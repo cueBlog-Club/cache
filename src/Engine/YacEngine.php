@@ -7,9 +7,12 @@ namespace CuePhp\Cache\Engine;
 use CuePhp\Cache\Exception\RuntimeException;
 use CuePhp\Cache\Exception\InvalidArgumentException;
 use CuePhp\Cache\Config\YacEngineConfig;
+use CuePhp\Cache\Counter;
+use CuePhp\Cache\Traits\CounterTrait;
 
-final class YacEngine extends EngineBase
+final class YacEngine extends EngineBase implements CounterInterface
 {
+    use CounterTrait;
 
     /**
      * yac client
@@ -166,12 +169,28 @@ final class YacEngine extends EngineBase
         return $this->_client->delete($keys);
     }
 
+    private function _fixCacheKey(string $key): string
+    {
+        if (strlen($key) > self::KEY_MAX_LEN) {
+            $key = md5($key);
+        }
+        return $key;
+    }
+
     /**
+     * @return Yac
+     */
+    public function getEngine(): Yac
+    {
+        return $this->_client;
+    }
+
+      /**
      * @var string $key
      * @var int $offset
-     * @return int
+     * @return Counter
      */
-    public function incr(string $key, int $offset = 1)
+    public function incr(string $key, int $offset = 1): Counter
     {
         $key = $this->_fixCacheKey($key);
         $value = $this->_client->get($key);
@@ -183,22 +202,14 @@ final class YacEngine extends EngineBase
     /**
      * @var string $key
      * @var int $offset
-     * @return int
+     * @return Counter
      */
-    public function decr(string $key, int $offset = 1)
+    public function decr(string $key, int $offset = 1): Counter
     {
         $key = $this->_fixCacheKey($key);
         $value = (int) $this->_client->get($key);
         $result = $value - $offset;
         $this->_client->set($key, $result);
         return $result;
-    }
-
-    private function _fixCacheKey(string $key): string
-    {
-        if (strlen($key) > self::KEY_MAX_LEN) {
-            $key = md5($key);
-        }
-        return $key;
     }
 }

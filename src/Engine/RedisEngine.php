@@ -8,9 +8,12 @@ use CuePhp\Cache\Exception\RuntimeException;
 use CuePhp\Cache\Exception\InvalidArgumentException;
 use Redis as RedisClient;
 use CuePhp\Cache\Config\RedisEngineConfig;
+use CuePhp\Cache\Counter;
+use CuePhp\Cache\Traits\CounterTrait;
 
-final class RedisEngine extends EngineBase
+final class RedisEngine extends EngineBase implements CounterInterface
 {
+    use CounterTrait;
     /**
      * redis engine instance
      * @var RedisClient
@@ -61,7 +64,7 @@ final class RedisEngine extends EngineBase
     {
         if ($this->config->getPassword() && $this->config->getUsername()) {
             $this->_redis->auth([$this->config->getUsername(), $this->config->getPassword()]);
-        } else if (!empty($this->config->getPassword())) {
+        } elseif (!empty($this->config->getPassword())) {
             $this->_redis->auth($this->config->getPassword());
         } else {
             throw new RuntimeException('user password is woring');
@@ -112,44 +115,6 @@ final class RedisEngine extends EngineBase
 
     /**
      * @var string $key
-     * @var int $offset
-     * @return int
-     */
-    public function incr(string $key, int $offset = 1)
-    {
-        $this->ensureArgument($key);
-        if ($offset > 1) {
-            $result = $this->_redis->incrBy($key, $offset);
-        } else {
-            $result = $this->_redis->incr($key);
-        }
-        if ($result === false) {
-            throw new RuntimeException('value must be number');
-        }
-        return $result;
-    }
-
-    /**
-     * @var string $key
-     * @var int $offset
-     * @return bool
-     */
-    public function decr(string $key, int $offset = 1)
-    {
-        $this->ensureArgument($key);
-        if ($offset > 1) {
-            $result = $this->_redis->decrBy($key, $offset);
-        } else {
-            $result = $this->_redis->decr($key);
-        }
-        if ($result === false) {
-            throw new RuntimeException('key is missing');
-        }
-        return $result;
-    }
-
-    /**
-     * @var string $key
      * @return bool
      */
     public function has($key): bool
@@ -173,7 +138,7 @@ final class RedisEngine extends EngineBase
             $this->ensureArgument($value);
         }
         $items = array_combine((array)$keys, $this->_redis->mGet($keys));
-        foreach ($items as $key =>  $value) {
+        foreach ($items as $key => $value) {
             if ($value === `FALSE`) {
                 $items[$key] = $default[$key];
             }
@@ -206,5 +171,51 @@ final class RedisEngine extends EngineBase
     public function deleteMultiple($keys): bool
     {
         return $this->_redis->del($keys);
+    }
+
+    /**
+     * @return RedisClient
+     */
+    public function getEngine(): RedisClient
+    {
+        return $this->_redis;
+    }
+
+      /**
+     * @var string $key
+     * @var int $offset
+     * @return int
+     */
+    public function incr(string $key, int $offset = 1): Counter
+    {
+        $this->ensureArgument($key);
+        if ($offset > 1) {
+            $result = $this->_redis->incrBy($key, $offset);
+        } else {
+            $result = $this->_redis->incr($key);
+        }
+        if ($result === false) {
+            throw new RuntimeException('value must be number');
+        }
+        return $result;
+    }
+
+    /**
+     * @var string $key
+     * @var int $offset
+     * @return bool
+     */
+    public function decr(string $key, int $offset = 1): Counter
+    {
+        $this->ensureArgument($key);
+        if ($offset > 1) {
+            $result = $this->_redis->decrBy($key, $offset);
+        } else {
+            $result = $this->_redis->decr($key);
+        }
+        if ($result === false) {
+            throw new RuntimeException('key is missing');
+        }
+        return $result;
     }
 }

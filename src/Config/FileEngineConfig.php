@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace CuePhp\Cache\Config;
@@ -14,7 +15,7 @@ final class FileEngineConfig extends EngineConfig
      * file path
      * @var string
      */
-    private $_path = "/tmp/";
+    private $_path = "/tmp";
 
     /**
      * file ops
@@ -22,12 +23,19 @@ final class FileEngineConfig extends EngineConfig
      */
     private $_mask = 0664;
 
-    public function __construct( string $path )
+    public function __construct(string $path = "")
+    {
+        if (!empty($path)) {
+            $this->setPath($path);
+        }
+    }
+
+    public function setPath(string $path)
     {
         $this->_path = $path;
     }
 
-    public function setMask( int $mask )
+    public function setMask(int $mask)
     {
         $this->_mask = $mask;
         return  $this;

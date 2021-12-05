@@ -1,54 +1,136 @@
 <?php
+
 declare(strict_types=1);
 
 namespace CuePhp\Cache;
 
-use CuePhp\Cache\Engine\EngineInterface;
-use CuePhp\Cache\Exception\RuntimeException;
-use CuePhp\Cache\Traits\InstanceTrait;
+use CuePhp\Cache\Exception\InvalidArgumentException;
+use Psr\Cache\CacheItemInterface;
+use Psr\Cache\CacheItemPoolInterface;
+use Psr\SimpleCache\CacheInterface;
+use CuePhp\Cache\Cache;
+use Closure;
 
-final class CacheManager
+final class CacheManager implements CacheItemPoolInterface
 {
-    use InstanceTrait;
+    /**
+     * @var CacheInterface
+     */
+    protected $engine = null;
 
     /**
-     * @var <name, EngineInterface>
+     * @var Closure
      */
-    protected $_engines = [];
+    protected $closure = null;
 
-    /**
-     * @var string $name
-     * @throws RuntimeException
-     * @return EngineInterface
-     */
-    public function __get(string $name): EngineInterface
+    public function __construct(CacheInterface  $engine)
     {
-        if ($this->has($name)) {
-            return $this->_engines[$name];
-        }
-        throw new RuntimeException(`Unknown object ${name}`);
+        $this->engine = $engine;
+        $this->closure =  Closure::bind(
+            static function (string $key, $val) {
+                $item = new Cache($key, $val);
+                $item->setIsHit($val !== null);
+                return $item;
+            },
+            null,
+            Cache::class
+        );
     }
 
     /**
-     * @var string $name
-     * @var object $value
-     * @return void
+     * @var string $key
+     * @return CacheItemInterface
      */
-    public function __set(string $name, object $value): void
+    public function getItem($key)
     {
-        if (array_key_exists($name, $this->_engines)) {
-            // remove old value
-            unset($this->_engines[$name]);
+        if (!is_string($key) || empty($key)) {
+            throw new InvalidArgumentException('key must not be empty string');
         }
-        $this->_engines[$name] = $value; 
+        $value = $this->engine->get($key);
+        return ($this->closure)($key, $value);
     }
 
     /**
-     * @var string $name
+     * @var array<string> $keys
+     * @return CacheItemInterface[]
+     */
+    public function getItems(array $keys = array())
+    {
+        foreach ($keys as $key) {
+            if (!is_string($key) || empty($key)) {
+                throw new InvalidArgumentException('key must not be empty string');
+            }
+        }
+        $values = $this->engine->getMultiple($keys);
+        return array_map($this->closure, array_keys(iterator_to_array($values)), $values);
+    }
+
+    /**
+     * @var string
      * @return bool
      */
-    public function has(string $name): bool
+    public function hasItem($key)
     {
-        return isset($this->_engines[$name]);
+        return $this->getItem($key)->isHit();
+    }
+
+    /**
+     * @return bool
+     */
+    public function clear()
+    {
+        return $this->engine->clear();
+    }
+
+    /**
+     * @var string $key
+     * @return bool
+     */
+    public function deleteItem($key)
+    {
+        return $this->deleteItems([$key]);
+    }
+
+    /**
+     * @var array<string> $keys
+     * @return bool
+     * @throws InvalidArgumentException
+     */
+    public function deleteItems(array $keys)
+    {
+        foreach ($keys as $key) {
+            if (!is_string($key) || empty($key)) {
+                throw new InvalidArgumentException('key must not be empty string');
+            }
+        }
+        return $this->engine->deleteMultiple($keys);
+    }
+
+    /**
+     * @var CacheItemInterface $item
+     * @return bool
+     */
+    public function save(CacheItemInterface $item)
+    {
+        if ($item instanceof Cache) {
+            return $this->engine->set($item->getKey(), $item->get(), $item->getTTL());
+        }
+        throw new InvalidArgumentException(sprintf('Invalid type %s for $item', get_class($item)));
+    }
+
+    /**
+     * TODO
+     */
+    public function saveDeferred(CacheItemInterface $item)
+    {
+        return false;
+    }
+
+    /**
+     * TODO
+     */
+    public function commit()
+    {
+        return false;
     }
 }

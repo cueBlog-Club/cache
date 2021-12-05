@@ -14,7 +14,7 @@ final class RedisEngineConfig extends EngineConfig
     /**
      * @var int
      */
-    private  $_port = 6379;
+    private $_port = 6379;
 
     /**
      * @var int

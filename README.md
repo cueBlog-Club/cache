@@ -21,7 +21,34 @@
 compose require cuephp/cache
 ```
 
-### Usage
+### Cache Usage
 
 ```php
+use CuePhp\Cache\Engine\InMemoryEngine;
+use CuePhp\Cache\Config\InMemoryConfig;
+
+$config = new InMemoryConfig;
+$engine = new InMemoryEngine( $config );
+
+$engine->set( 'key', 'value', 10 );
+
+$item = $engine->get('key');
+$item->getData(); // return 'value'
+```
+
+### Counter Usage
+
+```php
+use CuePhp\Cache\Engine\InMemoryEngine;
+use CuePhp\Cache\Config\InMemoryConfig;
+
+$config = new InMemoryConfig;
+$engine = new InMemoryEngine( $config );
+
+$incrCounter= $engine->incr( 'key' );
+$value = $incrCounter->getData(); //return 1 if 'key' not exist
+
+$incrCount = $engine->incr('key', 10);
+$value = $incrCounter->getData(); //return 11
+
 ```

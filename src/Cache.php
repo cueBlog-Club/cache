@@ -4,42 +4,124 @@ declare(strict_types=1);
 
 namespace CuePhp\Cache;
 
-use CuePhp\Cache\Exception\RuntimeException;
-use CuePhp\Cache\CacheManager;
-use CuePhp\Cache\Engine\EngineInterface;
+use CuePhp\Cache\Exception\InvalidArgumentException;
+use Psr\Cache\CacheItemInterface;
+use DateInterval;
+use DateTimeImmutable;
+use DateTimeInterface;
 
-final class Cache
+final class Cache implements CacheItemInterface
 {
-    /**
-     * @var EngineInterface
-     */
-    protected $engine = null;
 
     /**
-     * @var EngineInterface
+     * @var string
      */
-    public function __construct(EngineInterface $engine)
+    private $_key = '';
+
+    /**
+     * @var int
+     */
+    private $_ttl = 0;
+
+    /**
+     * @var mixed
+     */
+    private $_val;
+
+    /**
+     * @var bool
+     */
+    private $_isHit = false;
+
+    const DEFAULT_TTL = 5 * 60;
+
+    public function __construct(string $key, $val, int $ttl = self::DEFAULT_TTL)
     {
-        $this->engine = $engine;
+        $this->_key = $key;
+        $this->_val = $val;
+        $this->_ttl = $ttl;
+    }
+
+    public function setIsHit(bool $isHit)
+    {
+        $this->_isHit = $isHit;
+    }
+
+    public function getKey()
+    {
+        return $this->_key;
     }
 
     /**
-     * @var string $key
-     * @var mixed $values
-     * @var int $ttl
+     * @return int
      */
-    public function write(string $key, $values, $ttl = 0)
+    public function getTTL(): int
     {
-        return $this->engine->set($key, $values, $ttl);
+        return $this->_ttl;
     }
 
-    public function read(string $key)
+    public function get()
     {
-        return $this->engine->get($key);
+        if ($this->isHit()) {
+            return $this->_val;
+        }
+        return null;
     }
 
-    public function exist(string $key)
+    public function isHit()
     {
-        return $this->engine->has($key);
+        return $this->_isHit;
+    }
+
+    public function set($value)
+    {
+        $this->_val = $value;
+        return $this;
+    }
+
+    /**
+     * @var DateTimeInterface|null
+     * @return static
+     * @throws InvalidArgumentException
+     */
+    public function expiresAt($expiration)
+    {
+        if ($expiration === null) {
+            $this->_ttl = 0;
+            return $this;
+        }
+        if ($expiration instanceof DateTimeInterface) {
+            $this->_ttl = (int)$expiration->format('U') - time();
+            return $this;
+        }
+        throw new InvalidArgumentException('invalid type for expiration');
+    }
+
+    /**
+     * @var int|DateInterval|null $time
+     * @return static
+     * @throws InvalidArgumentException
+     */
+    public function expiresAfter($time)
+    {
+        if ($time === null) {
+            $this->_ttl = 0;
+            return $this;
+        }
+
+        if (is_int($time)) {
+            $this->_ttl = $time;
+            return $this;
+        }
+
+        if ($time instanceof DateInterval) {
+            // UTC-timezone
+            $date = DateTimeImmutable::createFromFormat('U', (string)time());
+            $ts =  $date->add($time)->format('U');
+            $this->_ttl = (int)$ts - time();
+            return $this;
+        }
+
+        throw new InvalidArgumentException('invalid type for time');
     }
 }
